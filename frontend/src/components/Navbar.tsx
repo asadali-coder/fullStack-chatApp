@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useMatch } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, MessageSquare, Settings, User } from "lucide-react";
+import { Home, LogOut, MessageSquare, Settings, User } from "lucide-react";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore() as {
@@ -8,6 +8,7 @@ const Navbar = () => {
     authUser: any;
   };
 
+  const isSettings = useMatch("/settings");
   return (
     <header
       className=" border-b border-base-300 fixed w-full top-0 z-40 
@@ -27,13 +28,22 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2">
             <Link
-              to={"/settings"}
+              to={isSettings ? (authUser ? "/" : "/login") : "/settings"}
               className={`
               btn btn-sm gap-2 transition-colors
               
               `}>
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
+              {isSettings ? (
+                <>
+                  <Home className="w-4 h-4" />
+                  <span className="hidden sm:inline">Home</span>
+                </>
+              ) : (
+                <>
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Settings</span>
+                </>
+              )}
             </Link>
 
             {authUser && (

@@ -71,7 +71,7 @@ export default function SignUpPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-100!">
-                  <User className="size-5 text-base-content/40" />
+                  <User className="size-5 text-base-content/40 z-20" />
                 </div>
                 <input
                   type="text"
@@ -91,7 +91,7 @@ export default function SignUpPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="size-5 text-base-content/40" />
+                  <Mail className="size-5 text-base-content/40 z-20" />
                 </div>
                 <input
                   type="email"
@@ -111,7 +111,7 @@ export default function SignUpPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="size-5 text-base-content/40" />
+                  <Lock className="size-5 text-base-content/40 z-20" />
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
@@ -127,9 +127,9 @@ export default function SignUpPage() {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? (
-                    <EyeOff className="size-5 text-base-content/40" />
+                    <EyeOff className="size-5 text-base-content/40 z-20" />
                   ) : (
-                    <Eye className="size-5 text-base-content/40" />
+                    <Eye className="size-5 text-base-content/40 z-20" />
                   )}
                 </button>
               </div>

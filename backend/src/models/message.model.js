@@ -17,6 +17,13 @@ const messageSchema = new Schema(
     image: {
       type: String,
     },
+    audio: { type: String },
+    audioDuration: { type: Number },
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+      default: null,
+    }, // reply reference
   },
   { timestamps: true }
 );

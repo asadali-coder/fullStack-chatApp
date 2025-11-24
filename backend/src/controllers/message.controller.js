@@ -38,18 +38,33 @@ export const getMessages = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body;
+    const { text, image, audio, audioDuration, replyTo } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
-    let imageUrl;
+    let imageUrl, audioUrl;
+
     if (image) {
-      // Upload base64 image to cloudinary
-      const uploadResponse = await cloudinary.uploader.upload(image);
-      imageUrl = uploadResponse.secure_url;
+      const imgRes = await cloudinary.uploader.upload(image, {
+        resource_type: "image",
+      });
+      imageUrl = imgRes.secure_url;
+    }
+
+    if (audio) {
+      const audioRes = await cloudinary.uploader.upload(
+        `data:audio/ogg;base64,${audio}`,
+        { resource_type: "raw" }
+      );
+      audioUrl = audioRes.secure_url;
+    }
+
+    if (!text && !imageUrl && !audioUrl) {
+      return res
+        .status(400)
+        .json({ error: "Message must have text, image, or audio" });
     }
 
     const newMessage = new Message({
@@ -57,6 +72,9 @@ export const sendMessage = async (req, res) => {
       receiverId,
       text,
       image: imageUrl,
+      audio: audioUrl,
+      audioDuration,
+      replyTo: replyTo || null, // <-- store reply reference
     });
 
     await newMessage.save();
@@ -68,7 +86,7 @@ export const sendMessage = async (req, res) => {
 
     res.status(201).json(newMessage);
   } catch (error) {
-    console.log("Error in sendMessage controller: ", error.message);
+    console.log("Error in sendMessage:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

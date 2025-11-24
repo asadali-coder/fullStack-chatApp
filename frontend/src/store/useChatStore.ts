@@ -9,6 +9,9 @@ export const useChatStore = create((set, get): any => ({
     selectedUser: null,
     isUsersLoading: false,
     isMessagesLoading: false,
+    replyingTo: null,
+    isSending: false,
+
 
     getUsers: async () => {
         set({ isUsersLoading: true });
@@ -34,21 +37,52 @@ export const useChatStore = create((set, get): any => ({
         }
     },
 
+    // sendMessage: async (messageData: any) => {
+    //     const { selectedUser, messages } = get();
+    //     try {
+    //         const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+    //         set({ messages: [...messages, res.data] });
+    //     } catch (error: any) {
+    //         const message =
+    //             error?.response?.data?.message ||
+    //             error?.message ||
+    //             "Failed to send message";
+    //         toast.error(message);
+    //     }
+
+    // },
+
+
     sendMessage: async (messageData: any) => {
-        const { selectedUser, messages } = get();
+        const { selectedUser, messages, replyingTo } = get();
+        set({ isSending: true });
         try {
-            const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-            set({ messages: [...messages, res.data] });
+            const dataToSend = {
+                ...messageData,
+                replyTo: replyingTo?._id || null, // <-- attach replyTo
+            };
+
+            const res = await axiosInstance.post(
+                `/messages/send/${selectedUser._id}`,
+                dataToSend
+            );
+
+            set({
+                messages: [...messages, res.data],
+                replyingTo: null, // reset after sending
+            });
         } catch (error: any) {
             const message =
                 error?.response?.data?.message ||
                 error?.message ||
                 "Failed to send message";
             toast.error(message);
+        } finally {
+            set({ isSending: false });
         }
-
     },
-
+    setIsSending: (val: boolean) => set({ isSending: val }),
+    setReplyingTo: (message: any) => set({ replyingTo: message }),
     subscribeToMessages: () => {
         const { selectedUser } = get();
         if (!selectedUser) return;

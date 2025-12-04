@@ -23,7 +23,11 @@ const messageSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
       default: null,
-    }, // reply reference
+    }, // reply reference1
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

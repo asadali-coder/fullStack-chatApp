@@ -11,7 +11,7 @@ export const useChatStore = create((set, get): any => ({
     isMessagesLoading: false,
     replyingTo: null,
     isSending: false,
-
+    isSendingAudio: false,
 
     getUsers: async () => {
         set({ isUsersLoading: true });
@@ -55,11 +55,17 @@ export const useChatStore = create((set, get): any => ({
 
     sendMessage: async (messageData: any) => {
         const { selectedUser, messages, replyingTo } = get();
-        set({ isSending: true });
+        const isAudio = !!messageData.audio;
+
+        if (isAudio) {
+            set({ isSendingAudio: true });
+        } else {
+            set({ isSending: true });
+        }
         try {
             const dataToSend = {
                 ...messageData,
-                replyTo: replyingTo?._id || null, // <-- attach replyTo
+                replyTo: replyingTo?._id || null,
             };
 
             const res = await axiosInstance.post(
@@ -83,6 +89,9 @@ export const useChatStore = create((set, get): any => ({
     },
     setIsSending: (val: boolean) => set({ isSending: val }),
     setReplyingTo: (message: any) => set({ replyingTo: message }),
+
+    setIsSendingAudio: (val: boolean) => set({ isSendingAudio: val }),
+
     subscribeToMessages: () => {
         const { selectedUser } = get();
         if (!selectedUser) return;

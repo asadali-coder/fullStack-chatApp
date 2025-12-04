@@ -15,7 +15,8 @@ const MessageInput = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const { sendMessage, replyingTo, setReplyingTo, isSending } = useChatStore();
+  const { sendMessage, replyingTo, setReplyingTo, isSending, isSendingAudio } =
+    useChatStore();
   // EMOJI BOX
   useEffect(() => {
     const closeEmoji = (e: MouseEvent) => {
@@ -220,9 +221,9 @@ const MessageInput = () => {
           className={`btn btn-circle ${
             isRecording ? "bg-red-500 text-white" : "bg-base-200"
           }`}
-          disabled={isSending}
+          disabled={isSendingAudio}
           onClick={isRecording ? stopRecording : startRecording}>
-          {isSending ? (
+          {isSendingAudio ? (
             <Loader2 className="animate-spin" size={20} />
           ) : (
             <Mic size={22} />
@@ -232,7 +233,7 @@ const MessageInput = () => {
         {/* SEND BUTTON */}
         <button
           type="submit"
-          className="btn btn-circle btn-primary flex items-center justify-center"
+          className="btn btn-circle btn-primary"
           disabled={isSending || (!text.trim() && !imagePreview)}>
           {isSending ? (
             <Loader2 className="animate-spin" size={20} />

@@ -20,8 +20,13 @@ const userSchema = new Schema(
       type: String,
       default: "",
     },
+
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const User = model("User", userSchema);

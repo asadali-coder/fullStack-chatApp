@@ -1,8 +1,8 @@
-export function formatMessageTime(date) {
+export function formatMessageTime(date:any) {
   if (!date) return "";
 
   const msgDate = new Date(date);
-  const now = new Date();
+  // const now = new Date();
 
   // Create copies to compare dates (ignoring time)
   const today = new Date();

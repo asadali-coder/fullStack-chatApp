@@ -1,29 +1,38 @@
 import { Server } from "socket.io";
 import express from "express";
 import http from "http";
+import User from "../models/user.model.js"; // Import User model
 
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: ["http://localhost:5173"] },
+  cors: {
+    origin: ["http://localhost:5173"],
+  },
 });
-// used to store online users
-const userSocketMap = {}; // {userId: socketId}
 
 export function getReceiverSocketId(userId) {
   return userSocketMap[userId];
 }
-io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
-  const userId = socket.handshake.query.userId;
-  if (userId) userSocketMap[userId] = socket.id;
 
-  // io.emit() is used to send events to all the connected clients
+// Store online users in memory for quick access
+const userSocketMap = {}; // {userId: socketId}
+
+io.on("connection", async (socket) => {
+  const userId = socket.handshake.query.userId;
+
+  if (userId) {
+    userSocketMap[userId] = socket.id;
+
+    // UPDATE DB: User is now online
+    await User.findByIdAndUpdate(userId, { isOnline: true });
+  }
+
+  // Emit online users immediately
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   socket.on("typing", ({ chatId }) => {
-    // chatId is essentially the receiver's ID in 1-on-1 chat
     const receiverSocketId = getReceiverSocketId(chatId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("typing", { senderId: userId });
@@ -36,10 +45,19 @@ io.on("connection", (socket) => {
       io.to(receiverSocketId).emit("stopTyping", { senderId: userId });
     }
   });
-  socket.on("disconnect", () => {
-    console.log("A user is disconnected", socket.id);
-    delete userSocketMap[userId];
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+  socket.on("disconnect", async () => {
+    if (userId) {
+      delete userSocketMap[userId];
+
+      // UPDATE DB: User is offline, record timestamp
+      await User.findByIdAndUpdate(userId, {
+        isOnline: false,
+        lastSeen: new Date(),
+      });
+
+      io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    }
   });
 });
 

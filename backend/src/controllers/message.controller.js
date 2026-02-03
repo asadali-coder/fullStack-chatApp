@@ -6,15 +6,73 @@ import { getReceiverSocketId, io } from "../libs/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    // TODO: In the future, we can sort these by 'lastMessage' timestamp for true WhatsApp ordering
-    const filteredUsers = await User.find({
-      _id: { $ne: loggedInUserId },
-    }).select("-password");
 
-    return res.status(200).json(filteredUsers);
+    // MongoDB Aggregation to get users + their last message
+    const filteredUsers = await User.aggregate([
+      // 1. Exclude current user
+      { $match: { _id: { $ne: loggedInUserId } } },
+
+      // 2. Lookup the LAST message between loggedInUser and this user
+      {
+        $lookup: {
+          from: "messages",
+          let: { userId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    {
+                      $and: [
+                        { $eq: ["$senderId", "$$userId"] },
+                        { $eq: ["$receiverId", loggedInUserId] },
+                      ],
+                    },
+                    {
+                      $and: [
+                        { $eq: ["$senderId", loggedInUserId] },
+                        { $eq: ["$receiverId", "$$userId"] },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            { $sort: { createdAt: -1 } },
+            { $limit: 1 }, // We only need the very last message
+          ],
+          as: "lastMessageData",
+        },
+      },
+
+      // 3. Flatten the array so we just get an object (or null)
+      {
+        $addFields: {
+          lastMessage: { $arrayElemAt: ["$lastMessageData", 0] },
+        },
+      },
+
+      // 4. Sort users: Those with newer messages go to top.
+      // Users with no messages (null) go to bottom.
+      {
+        $sort: {
+          "lastMessage.createdAt": -1,
+        },
+      },
+
+      // 5. Clean up output (remove password, etc)
+      {
+        $project: {
+          password: 0,
+          lastMessageData: 0,
+        },
+      },
+    ]);
+
+    res.status(200).json(filteredUsers);
   } catch (error) {
-    console.log("Error in getUsersForSidebar controller ", error.message);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error in getUsersForSidebar: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

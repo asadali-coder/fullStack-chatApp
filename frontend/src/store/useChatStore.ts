@@ -54,7 +54,7 @@ export const useChatStore = create((set, get): any => ({
 
 
     sendMessage: async (messageData: any) => {
-        const { selectedUser, messages, replyingTo } = get();
+        const { selectedUser, messages, replyingTo, users } = get();
         const isAudio = !!messageData.audio;
 
         if (isAudio) {
@@ -77,6 +77,19 @@ export const useChatStore = create((set, get): any => ({
                 messages: [...messages, res.data],
                 replyingTo: null, // reset after sending
             });
+            const userIndex = users.findIndex((u) => u._id === selectedUser._id);
+            if (userIndex !== -1) {
+                const updatedUsers = [...users];
+                const [movedUser] = updatedUsers.splice(userIndex, 1); // Remove user
+
+                // Update their last message for the preview text
+                movedUser.lastMessage = res.data;
+
+                // Add to top
+                updatedUsers.unshift(movedUser);
+
+                set({ users: updatedUsers });
+            }
         } catch (error: any) {
             const message =
                 error?.response?.data?.message ||
@@ -94,38 +107,52 @@ export const useChatStore = create((set, get): any => ({
 
     subscribeToMessages: () => {
         const { selectedUser } = get();
-        if (!selectedUser) return;
-
         const socket = useAuthStore.getState().socket;
 
+
         socket.on("newMessage", (newMessage) => {
-            const isMessageSentFromSelectedUser =
-                newMessage.senderId === selectedUser._id;
+            // 1. Update Messages (only if chatting with this user)
+            const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser?._id;
+            if (isMessageSentFromSelectedUser) {
+                set({
+                    messages: [...get().messages, newMessage],
+                });
+            }
 
-            if (!isMessageSentFromSelectedUser) return;
+            // 2. REAL-TIME SIDEBAR UPDATE (For Receiver)
+            const { users } = get();
+            const senderIndex = users.findIndex((u) => u._id === newMessage.senderId);
 
-            set({
-                messages: [...get().messages, newMessage],
-            });
+            if (senderIndex !== -1) {
+                const updatedUsers = [...users];
+                const [sender] = updatedUsers.splice(senderIndex, 1);
+
+                // Update preview
+                sender.lastMessage = newMessage;
+
+                // Move to top
+                updatedUsers.unshift(sender);
+
+                set({ users: updatedUsers });
+            }
         });
         socket.on("typing", (senderId) => {
-            if (senderId === selectedUser._id) {
+            if (senderId === selectedUser?._id) {
                 set({ isTyping: true });
             }
         });
 
         socket.on("stopTyping", (senderId) => {
-            if (senderId === selectedUser._id) {
+            if (senderId === selectedUser?._id) {
                 set({ isTyping: false });
             }
         });
     },
-
     unsubscribeFromMessages: () => {
         const socket = useAuthStore.getState().socket;
         socket.off("newMessage");
-        socket.off("typing");     
-        socket.off("stopTyping"); 
+        socket.off("typing");
+        socket.off("stopTyping");
     },
 
     setSelectedUser: (selectedUser: any) => set({ selectedUser }),

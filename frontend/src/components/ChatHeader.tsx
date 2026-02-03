@@ -1,13 +1,14 @@
 import { X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
-import { formatMessageTime } from "../lib/utils"; 
+import { formatMessageTime } from "../lib/utils";
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, isTyping } = useChatStore();
   const { onlineUsers } = useAuthStore();
 
-  const isOnline = onlineUsers.includes(selectedUser._id);
+  // Safety check: Ensure onlineUsers is an array before checking includes
+  const isOnline = onlineUsers && onlineUsers.includes(selectedUser._id);
 
   return (
     <div className="p-2.5 border-b border-base-300">
@@ -20,6 +21,10 @@ const ChatHeader = () => {
                 src={selectedUser.profilePicture || "/avatar.png"}
                 alt={selectedUser.fullName}
               />
+              {/* Online Dot (Optional redundancy, but looks nice) */}
+              {isOnline && (
+                <span className="absolute bottom-0 right-0 size-2.5 bg-green-500 rounded-full ring-2 ring-base-100" />
+              )}
             </div>
           </div>
 
@@ -27,16 +32,16 @@ const ChatHeader = () => {
           <div>
             <h3 className="font-medium">{selectedUser.fullName}</h3>
 
-            {/* STATUS LOGIC */}
             <p className="text-sm text-base-content/70">
               {isTyping ? (
-                <span className="text-green-500 font-semibold animate-pulse">
+                <span className="text-primary font-semibold animate-pulse">
                   Typing...
                 </span>
               ) : isOnline ? (
-                <span className="text-green-500">Online</span>
+                <span className="text-green-500 font-medium">Online</span>
               ) : (
                 <span className="text-zinc-500">
+                  {/* The utility now handles the "today/yesterday" text */}
                   {selectedUser.lastSeen
                     ? `Last seen ${formatMessageTime(selectedUser.lastSeen)}`
                     : "Offline"}
@@ -48,7 +53,7 @@ const ChatHeader = () => {
 
         {/* Close button */}
         <button onClick={() => setSelectedUser(null)}>
-          <X />
+          <X className="size-5" />
         </button>
       </div>
     </div>

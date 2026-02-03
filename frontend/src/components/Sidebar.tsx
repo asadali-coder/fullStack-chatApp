@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { Users, Video } from "lucide-react"; // Added Video icon for audio/media fallback
+import { Users } from "lucide-react"; // Added Video icon for audio/media fallback
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { formatMessageTime } from "../lib/utils";
 

@@ -2,6 +2,8 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
+import { soundManager } from "../lib/soundManager";
+import showNotification, { shouldNotifyInBackground } from "../lib/sharedMethod";
 
 export const useChatStore = create((set, get): any => ({
     messages: [],
@@ -13,6 +15,13 @@ export const useChatStore = create((set, get): any => ({
     isSending: false,
     isSendingAudio: false,
     isTyping: false,
+    chatHandlers: {
+        onNewMessage: null,
+        onTyping: null,
+        onStopTyping: null,
+    },
+    typingTimeoutId: null,
+
     getUsers: async () => {
         set({ isUsersLoading: true });
         try {
@@ -36,22 +45,6 @@ export const useChatStore = create((set, get): any => ({
             set({ isMessagesLoading: false });
         }
     },
-
-    // sendMessage: async (messageData: any) => {
-    //     const { selectedUser, messages } = get();
-    //     try {
-    //         const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-    //         set({ messages: [...messages, res.data] });
-    //     } catch (error: any) {
-    //         const message =
-    //             error?.response?.data?.message ||
-    //             error?.message ||
-    //             "Failed to send message";
-    //         toast.error(message);
-    //     }
-
-    // },
-
 
     sendMessage: async (messageData: any) => {
         const { selectedUser, messages, replyingTo, users } = get();
@@ -77,10 +70,11 @@ export const useChatStore = create((set, get): any => ({
                 messages: [...messages, res.data],
                 replyingTo: null, // reset after sending
             });
+            get().emitStopTyping();
             const userIndex = users.findIndex((u) => u._id === selectedUser._id);
             if (userIndex !== -1) {
                 const updatedUsers = [...users];
-                const [movedUser] = updatedUsers.splice(userIndex, 1); // Remove user
+                const [movedUser] = updatedUsers.splice(userIndex, 1);
 
                 // Update their last message for the preview text
                 movedUser.lastMessage = res.data;
@@ -97,7 +91,7 @@ export const useChatStore = create((set, get): any => ({
                 "Failed to send message";
             toast.error(message);
         } finally {
-            set({ isSending: false });
+            set({ isSending: false, isSendingAudio: false });
         }
     },
     setIsSending: (val: boolean) => set({ isSending: val }),
@@ -106,54 +100,151 @@ export const useChatStore = create((set, get): any => ({
     setIsSendingAudio: (val: boolean) => set({ isSendingAudio: val }),
 
     subscribeToMessages: () => {
-        const { selectedUser } = get();
         const socket = useAuthStore.getState().socket;
-
-
-        socket.on("newMessage", (newMessage) => {
-            // 1. Update Messages (only if chatting with this user)
-            const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser?._id;
-            if (isMessageSentFromSelectedUser) {
-                set({
-                    messages: [...get().messages, newMessage],
-                });
+        if (!socket) return;
+        const onNewMessage = (newMessage) => {
+            const selectedUser = get().selectedUser;
+            if (selectedUser && newMessage.senderId === selectedUser._id) {
+                set({ messages: [...get().messages, newMessage] });
             }
+        };
 
-            // 2. REAL-TIME SIDEBAR UPDATE (For Receiver)
-            const { users } = get();
-            const senderIndex = users.findIndex((u) => u._id === newMessage.senderId);
+        const onTyping = (payload: any) => {
+            const senderId = typeof payload === "string" ? payload : payload?.senderId;
+            if (senderId === get().selectedUser?._id) set({ isTyping: true });
+        };
 
-            if (senderIndex !== -1) {
-                const updatedUsers = [...users];
-                const [sender] = updatedUsers.splice(senderIndex, 1);
+        const onStopTyping = (payload: any) => {
+            const senderId = typeof payload === "string" ? payload : payload?.senderId;
+            if (senderId === get().selectedUser?._id) set({ isTyping: false });
+        };
 
-                // Update preview
-                sender.lastMessage = newMessage;
-
-                // Move to top
-                updatedUsers.unshift(sender);
-
-                set({ users: updatedUsers });
-            }
-        });
-        socket.on("typing", (senderId) => {
-            if (senderId === selectedUser?._id) {
-                set({ isTyping: true });
-            }
+        set({
+            chatHandlers: { onNewMessage, onTyping, onStopTyping },
         });
 
-        socket.on("stopTyping", (senderId) => {
-            if (senderId === selectedUser?._id) {
-                set({ isTyping: false });
-            }
-        });
+        socket.on("newMessage", onNewMessage);
+        socket.on("typing", onTyping);
+        socket.on("stopTyping", onStopTyping);
     },
     unsubscribeFromMessages: () => {
         const socket = useAuthStore.getState().socket;
-        socket.off("newMessage");
-        socket.off("typing");
-        socket.off("stopTyping");
+        if (!socket) return;
+
+        const { onNewMessage, onTyping, onStopTyping } = get().chatHandlers || {};
+
+        if (onNewMessage) socket.off("newMessage", onNewMessage);
+        if (onTyping) socket.off("typing", onTyping);
+        if (onStopTyping) socket.off("stopTyping", onStopTyping);
+
+        set({ chatHandlers: { onNewMessage: null, onTyping: null, onStopTyping: null } });
     },
 
-    setSelectedUser: (selectedUser: any) => set({ selectedUser }),
+
+    handleConversationUpdated: async ({ userId, lastMessage }) => {
+        const { users, selectedUser } = get();
+        const authUser = useAuthStore.getState().authUser;
+
+        const isChatOpen = selectedUser?._id === userId;
+
+        // if sender is me, don't count unread / don't play sound
+        const isMine =
+            String(lastMessage?.senderId) === String(authUser?._id);
+
+        const idx = users.findIndex((u) => u._id === userId);
+
+        if (idx !== -1) {
+            const updated = [...users];
+            const [u] = updated.splice(idx, 1);
+
+            u.lastMessage = lastMessage;
+
+
+            u.unreadCount = (isChatOpen || isMine) ? 0 : (u.unreadCount || 0) + 1;
+
+            updated.unshift(u);
+            set({ users: updated });
+
+            if (!isMine && !isChatOpen && shouldNotifyInBackground()) {
+                soundManager.playNotify();
+                showNotification("New message", lastMessage.text ?? "New message received");
+            }
+            return;
+        }
+
+        //  New conversation user not in sidebar → refetch list
+        try {
+            const res = await axiosInstance.get("/messages/users");
+
+            const refreshed = res.data.map((u) =>
+                u._id === userId
+                    ? {
+                        ...u,
+                        lastMessage,
+                        unreadCount: (isMine || isChatOpen) ? 0 : 1,
+                    }
+                    : u
+            );
+
+            set({ users: refreshed });
+
+
+            if (!isMine && !isChatOpen && shouldNotifyInBackground()) {
+                soundManager.playNotify();
+                showNotification("New message", lastMessage.text ?? "New message received");
+            }
+        } catch { }
+    },
+    emitTyping: () => {
+        const socket = useAuthStore.getState().socket;
+        const { selectedUser } = get();
+        const authUser = useAuthStore.getState().authUser;
+
+        if (!socket || !selectedUser || !authUser) return;
+
+        socket.emit("typing", {
+            receiverId: selectedUser._id,
+            senderId: authUser._id,
+        });
+    },
+
+    emitStopTyping: () => {
+        const socket = useAuthStore.getState().socket;
+        const { selectedUser } = get();
+        const authUser = useAuthStore.getState().authUser;
+
+        if (!socket || !selectedUser || !authUser) return;
+
+        socket.emit("stopTyping", {
+            receiverId: selectedUser._id,
+            senderId: authUser._id,
+        });
+    },
+
+    onInputTyping: () => {
+        const { typingTimeoutId, emitTyping, emitStopTyping } = get();
+
+        // start typing
+        emitTyping();
+
+        // debounce stopTyping
+        if (typingTimeoutId) clearTimeout(typingTimeoutId);
+
+        const id = setTimeout(() => {
+            emitStopTyping();
+            set({ typingTimeoutId: null });
+        }, 900);
+
+        set({ typingTimeoutId: id });
+    },
+
+    setSelectedUser: (selectedUser: any) =>
+        set((state: any) => ({
+            selectedUser,
+            isTyping: false,
+            users: state.users.map((u) =>
+                u._id === selectedUser?._id ? { ...u, unreadCount: 0 } : u
+            ),
+        })),
+
 }));

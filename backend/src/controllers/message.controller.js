@@ -4,76 +4,30 @@ import cloudinary from "../libs/cloudinary.js";
 import { getReceiverSocketId, io } from "../libs/socket.js";
 
 export const getUsersForSidebar = async (req, res) => {
-  try {
-    const loggedInUserId = req.user._id;
+  const myId = req.user._id;
 
-    // MongoDB Aggregation to get users + their last message
-    const filteredUsers = await User.aggregate([
-      // 1. Exclude current user
-      { $match: { _id: { $ne: loggedInUserId } } },
+  const users = await User.find({ _id: { $ne: myId } }).select("-password");
 
-      // 2. Lookup the LAST message between loggedInUser and this user
-      {
-        $lookup: {
-          from: "messages",
-          let: { userId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $or: [
-                    {
-                      $and: [
-                        { $eq: ["$senderId", "$$userId"] },
-                        { $eq: ["$receiverId", loggedInUserId] },
-                      ],
-                    },
-                    {
-                      $and: [
-                        { $eq: ["$senderId", loggedInUserId] },
-                        { $eq: ["$receiverId", "$$userId"] },
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-            { $sort: { createdAt: -1 } },
-            { $limit: 1 }, // We only need the very last message
-          ],
-          as: "lastMessageData",
-        },
-      },
+  const usersWithUnread = await Promise.all(
+    users.map(async (u) => {
+      const unreadCount = await Message.countDocuments({
+        senderId: u._id,
+        receiverId: myId,
+        isRead: false,
+      });
 
-      // 3. Flatten the array so we just get an object (or null)
-      {
-        $addFields: {
-          lastMessage: { $arrayElemAt: ["$lastMessageData", 0] },
-        },
-      },
+      const lastMessage = await Message.findOne({
+        $or: [
+          { senderId: myId, receiverId: u._id },
+          { senderId: u._id, receiverId: myId },
+        ],
+      }).sort({ createdAt: -1 });
 
-      // 4. Sort users: Those with newer messages go to top.
-      // Users with no messages (null) go to bottom.
-      {
-        $sort: {
-          "lastMessage.createdAt": -1,
-        },
-      },
+      return { ...u.toObject(), unreadCount, lastMessage };
+    }),
+  );
 
-      // 5. Clean up output (remove password, etc)
-      {
-        $project: {
-          password: 0,
-          lastMessageData: 0,
-        },
-      },
-    ]);
-
-    res.status(200).json(filteredUsers);
-  } catch (error) {
-    console.error("Error in getUsersForSidebar: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
-  }
+  res.json(usersWithUnread);
 };
 
 export const getMessages = async (req, res) => {
@@ -133,7 +87,6 @@ export const sendMessage = async (req, res) => {
     }
 
     if (audio) {
-      // PRO TIP: Use 'video' resource_type for audio to ensure better cross-browser playback URL support
       const audioRes = await cloudinary.uploader.upload(
         `data:audio/ogg;base64,${audio}`,
         { resource_type: "video" },
@@ -159,20 +112,54 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
-    // 4. Populate BEFORE emitting socket event so the receiver sees the reply preview instantly
     const populatedMessage = await Message.findById(newMessage._id).populate(
       "replyTo",
       "text image audio",
     );
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", populatedMessage);
+    const receiverSocketIds = getReceiverSocketId(receiverId);
+    if (receiverSocketIds) {
+      for (const socketId of receiverSocketIds) {
+        io.to(socketId).emit("newMessage", populatedMessage);
+
+  
+        io.to(socketId).emit("conversationUpdated", {
+          userId: senderId,
+          lastMessage: populatedMessage,
+        });
+      }
+    }
+
+
+    const senderSocketIds = getReceiverSocketId(senderId);
+    if (senderSocketIds) {
+      for (const socketId of senderSocketIds) {
+        io.to(socketId).emit("conversationUpdated", {
+          userId: receiverId,
+          lastMessage: populatedMessage,
+        });
+      }
     }
 
     res.status(201).json(populatedMessage);
   } catch (error) {
     console.log("Error in sendMessage:", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const markAsRead = async (req, res) => {
+  try {
+    const otherUserId = req.params.id;
+    const myId = req.user._id;
+
+    await Message.updateMany(
+      { senderId: otherUserId, receiverId: myId, isRead: false },
+      { $set: { isRead: true } },
+    );
+
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: "Failed to mark as read" });
   }
 };

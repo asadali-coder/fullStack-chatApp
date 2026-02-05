@@ -3,6 +3,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import AuthImagePattern from "../components/AuthImagePattern";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
+import { ensurePermission } from "../lib/sharedMethod";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,8 +18,11 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    login(formData);
-    console.log(formData);
+
+    const ok = await ensurePermission();
+    console.log("permission ok?", ok);
+
+     login(formData);
   };
 
   return (

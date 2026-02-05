@@ -12,6 +12,7 @@ import {
 import { Link } from "react-router-dom";
 import AuthImagePattern from "../components/AuthImagePattern";
 import toast from "react-hot-toast";
+import { ensurePermission } from "../lib/sharedMethod";
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -36,12 +37,14 @@ export default function SignUpPage() {
 
     return true;
   };
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async(e: any) => {
     e.preventDefault();
     const success = validateForm();
 
     if (success === true) {
       signUp(formData);
+       await ensurePermission();
+
     }
   };
   return (

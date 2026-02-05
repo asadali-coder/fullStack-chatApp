@@ -19,7 +19,7 @@ const MessageInput = () => {
   const { sendMessage, replyingTo, setReplyingTo, isSending, isSendingAudio } =
     useChatStore();
   const { socket } = useAuthStore(); // Get socket
-  const { selectedUser } = useChatStore();
+  const { selectedUser, onInputTyping } = useChatStore();
   // EMOJI BOX
   useEffect(() => {
     const closeEmoji = (e: MouseEvent) => {
@@ -134,22 +134,7 @@ const MessageInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleInputChange = (e) => {
-    setText(e.target.value);
 
-    // Emit Typing Event
-    if (text.length === 0) {
-      socket.emit("typing", selectedUser._id);
-    }
-
-    // Clear previous timeout (debounce)
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-    // Set a new timeout to stop typing after 2 seconds of inactivity
-    typingTimeoutRef.current = setTimeout(() => {
-      socket.emit("stopTyping", selectedUser._id);
-    }, 2000);
-  };
 
   return (
     <div className="p-4 w-full bg-base-100 border-t border-zinc-700">
@@ -200,7 +185,10 @@ const MessageInput = () => {
             className="w-full input input-bordered rounded-xl input-sm sm:input-md bg-base-200"
             placeholder="Type a message..."
             value={text}
-            onChange={handleInputChange}
+            onChange={(e) => {
+              setText(e.target.value);
+              onInputTyping();
+            }}
           />
 
           {/* Emoji Button */}

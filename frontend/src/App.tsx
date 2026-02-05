@@ -10,19 +10,19 @@ import { useEffect } from "react";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 import { useThemeStore } from "./store/useThemeStore";
+import { soundManager } from "./lib/soundManager";
 
 function App() {
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers } =
-    useAuthStore() as any;
+  const { authUser, checkAuth, isCheckingAuth } = useAuthStore() as any;
   const { theme } = useThemeStore() as {
     theme: any;
   };
   useEffect(() => {
+  soundManager.unlockOnce();
+  }, []);
+  useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
-  console.log("check online user", onlineUsers);
-  console.log("check authenticated user", authUser);
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex items-center justify-center h-screen">

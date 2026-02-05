@@ -4,9 +4,9 @@ import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime } from "../lib/utils";
 
 const ChatHeader = () => {
-  const { selectedUser, setSelectedUser, isTyping } = useChatStore();
+  const { selectedUser, setSelectedUser, isTyping, onInputTyping } =
+    useChatStore();
   const { onlineUsers } = useAuthStore();
-
   // Safety check: Ensure onlineUsers is an array before checking includes
   const isOnline = onlineUsers && onlineUsers.includes(selectedUser._id);
 
@@ -21,10 +21,6 @@ const ChatHeader = () => {
                 src={selectedUser.profilePicture || "/avatar.png"}
                 alt={selectedUser.fullName}
               />
-              {/* Online Dot (Optional redundancy, but looks nice) */}
-              {isOnline && (
-                <span className="absolute bottom-0 right-0 size-2.5 bg-green-500 rounded-full ring-2 ring-base-100" />
-              )}
             </div>
           </div>
 
@@ -32,22 +28,19 @@ const ChatHeader = () => {
           <div>
             <h3 className="font-medium">{selectedUser.fullName}</h3>
 
-            <p className="text-sm text-base-content/70">
-              {isTyping ? (
-                <span className="text-primary font-semibold animate-pulse">
-                  Typing...
-                </span>
-              ) : isOnline ? (
-                <span className="text-green-500 font-medium">Online</span>
-              ) : (
-                <span className="text-zinc-500">
-                  {/* The utility now handles the "today/yesterday" text */}
-                  {selectedUser.lastSeen
-                    ? `Last seen ${formatMessageTime(selectedUser.lastSeen)}`
-                    : "Offline"}
-                </span>
-              )}
-            </p>
+            {isTyping ? (
+              <span className="text-primary font-semibold animate-pulse">
+                Typing...
+              </span>
+            ) : isOnline ? (
+              <span className="text-green-500 font-medium">Online</span>
+            ) : (
+              <span className="text-zinc-500">
+                {selectedUser?.lastSeen
+                  ? `Last seen ${formatMessageTime(selectedUser.lastSeen)}`
+                  : "Offline"}
+              </span>
+            )}
           </div>
         </div>
 

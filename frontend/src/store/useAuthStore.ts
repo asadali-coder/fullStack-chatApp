@@ -2,7 +2,9 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
-const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5000/api" : ""
+import { useChatStore } from "./useChatStore";
+// const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5000/api" : ""
+
 export const useAuthStore = create<any>((set, get) => ({
     authUser: null,
     isSigningUp: false,
@@ -82,21 +84,42 @@ export const useAuthStore = create<any>((set, get) => ({
 
 
     connectSocket: () => {
-        const { authUser } = get()
-        if (!authUser || get().socket?.connected) return
-        const socket = io(BASE_URL, {
-            query: {
-                userId: authUser._id
-            }
-        })
-        socket.connect()
-        set({ socket: socket })
-        socket.on("getOnlineUsers", (userIds) => {
-            set({ onlineUsers: userIds })
-        })
+        const { authUser, socket } = get();
+
+        if (!authUser || socket?.connected) return;
+
+        const newSocket = io("http://localhost:5000", {
+            auth: {
+                userId: authUser._id,
+            },
+            withCredentials: true,
+        });
+
+        newSocket.on("connect", () => {
+        });
+
+        newSocket.on("getOnlineUsers", (userIds) => {
+            set({ onlineUsers: userIds });
+        });
+
+        newSocket.on("connect_error", (err) => {
+            console.log("socket error:", err.message);
+        });
+        newSocket.off("conversationUpdated");
+        newSocket.on("conversationUpdated", (payload) => {
+            useChatStore.getState().handleConversationUpdated(payload);
+        });
+       
+        set({ socket: newSocket });
     },
+
     disconnectSocket: () => {
-        if (get().socket.connected) { get().socket.disconnect() }
+        const socket = get().socket;
+        if (socket) {
+            socket.disconnect();
+            set({ socket: null, onlineUsers: [] });
+        }
     }
+
 
 }))

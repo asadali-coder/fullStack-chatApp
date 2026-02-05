@@ -78,7 +78,7 @@ const Sidebar = () => {
                 </div>
               </div>
 
-              <div className="text-sm text-zinc-400 truncate">
+              <div className="text-sm text-zinc-400 truncate flex justify-between">
                 {user.lastMessage ? (
                   user.lastMessage.text ? (
                     user.lastMessage.text
@@ -89,6 +89,12 @@ const Sidebar = () => {
                   )
                 ) : (
                   "No messages yet"
+                )}
+
+                {user.unreadCount > 0 && (
+                  <div className="ml-auto min-w-[20px] h-[20px] px-2 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">
+                    {user.unreadCount > 99 ? "99+" : user.unreadCount}
+                  </div>
                 )}
               </div>
             </div>

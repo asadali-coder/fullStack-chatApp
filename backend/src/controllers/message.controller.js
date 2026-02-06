@@ -21,7 +21,9 @@ export const getUsersForSidebar = async (req, res) => {
           { senderId: myId, receiverId: u._id },
           { senderId: u._id, receiverId: myId },
         ],
-      }).sort({ createdAt: -1 });
+      })
+        .sort({ createdAt: -1 })
+        .populate("replyTo", "text image audio");
 
       return { ...u.toObject(), unreadCount, lastMessage };
     }),
@@ -41,7 +43,9 @@ export const getMessages = async (req, res) => {
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-    }).populate("replyTo", "text image audio"); // <--- FIX: Populate reply context
+    })
+      .sort({ createdAt: 1 })
+      .populate("replyTo", "text image audio senderId createdAt");
 
     // 2. Mark incoming unread messages as READ
     const unreadMessages = messages.filter(
@@ -100,6 +104,19 @@ export const sendMessage = async (req, res) => {
         .json({ error: "Message must have text, image, or audio" });
     }
 
+    let safeReplyTo = null;
+
+    if (replyTo) {
+      const ref = await Message.findOne({
+        _id: replyTo,
+        $or: [
+          { senderId, receiverId },
+          { senderId: receiverId, receiverId: senderId },
+        ],
+      }).select("_id");
+      safeReplyTo = ref ? ref._id : null;
+    }
+
     const newMessage = new Message({
       senderId,
       receiverId,
@@ -107,7 +124,7 @@ export const sendMessage = async (req, res) => {
       image: imageUrl,
       audio: audioUrl,
       audioDuration,
-      replyTo: replyTo || null,
+      replyTo: safeReplyTo ,
     });
 
     await newMessage.save();
@@ -122,14 +139,12 @@ export const sendMessage = async (req, res) => {
       for (const socketId of receiverSocketIds) {
         io.to(socketId).emit("newMessage", populatedMessage);
 
-  
         io.to(socketId).emit("conversationUpdated", {
           userId: senderId,
           lastMessage: populatedMessage,
         });
       }
     }
-
 
     const senderSocketIds = getReceiverSocketId(senderId);
     if (senderSocketIds) {

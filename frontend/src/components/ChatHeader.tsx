@@ -4,7 +4,7 @@ import { useChatStore } from "../store/useChatStore";
 import { formatMessageTime } from "../lib/utils";
 
 const ChatHeader = () => {
-  const { selectedUser, setSelectedUser, isTyping, onInputTyping } =
+  const { selectedUser, setSelectedUser, isTyping } =
     useChatStore();
   const { onlineUsers } = useAuthStore();
   // Safety check: Ensure onlineUsers is an array before checking includes

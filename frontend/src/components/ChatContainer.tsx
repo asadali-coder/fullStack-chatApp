@@ -42,6 +42,37 @@ const ChatContainer = () => {
     el.classList.add("msg-highlight");
     setTimeout(() => el.classList.remove("msg-highlight"), 1200);
   };
+
+  const linkify = (text = "") => {
+    // Match URL, but stop if another http(s) starts (back-to-back links)
+    const urlRegex = /(https?:\/\/[^\s]+?)(?=https?:\/\/|\s|$)/g;
+
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, i) => {
+      if (!part) return null;
+
+      // Use a NON-global regex here to avoid the `.test()` + /g bug
+      const isUrl = /^https?:\/\/\S+$/i.test(part);
+
+      if (!isUrl) return <span key={i}>{part}</span>;
+
+      // Optional: remove trailing punctuation like ., ) , ]
+      const cleaned = part.replace(/[),.\]]+$/g, "");
+
+      return (
+        <a
+          key={i}
+          href={cleaned}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 underline break-words">
+          {cleaned}
+        </a>
+      );
+    });
+  };
+
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
@@ -130,7 +161,9 @@ const ChatContainer = () => {
               )}
 
               {/* TEXT MESSAGE */}
-              {message.text && <p>{message.text}</p>}
+              {message.text && (
+                <p className="whitespace-pre-wrap">{linkify(message.text)}</p>
+              )}
 
               {/* REPLY BUTTON */}
               <button

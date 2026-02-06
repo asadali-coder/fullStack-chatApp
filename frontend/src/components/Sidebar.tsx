@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import {  useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { Users } from "lucide-react"; // Added Video icon for audio/media fallback
+import { Users } from "lucide-react"; 
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { formatMessageTime } from "../lib/utils";
-
-const Sidebar = () => {
+const Sidebar = ({ onSelectUser }: { onSelectUser?: () => void }) => {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } =
     useChatStore();
   const { onlineUsers } = useAuthStore();
@@ -20,9 +19,12 @@ const Sidebar = () => {
     : users;
 
   if (isUsersLoading) return <SidebarSkeleton />;
-
+  const onSelectedUser = (user: any) => {
+    setSelectedUser(user);
+    onSelectUser?.();
+  };
   return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
+    <aside className="h-full w-full lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           <Users className="size-6" />
@@ -47,10 +49,10 @@ const Sidebar = () => {
       </div>
 
       <div className="overflow-y-auto w-full py-3">
-        {filteredUsers.map((user) => (
+        {filteredUsers.map((user: any) => (
           <button
             key={user._id}
-            onClick={() => setSelectedUser(user)}
+            onClick={() => onSelectedUser(user)}
             className={`
               w-full p-3 flex items-center gap-3
               hover:bg-base-300 transition-colors
@@ -68,7 +70,7 @@ const Sidebar = () => {
             </div>
 
             {/* Desktop View: Name + Last Message Preview */}
-            <div className="hidden lg:block text-left min-w-0 flex-1">
+            <div className=" lg:block text-left min-w-0 flex-1">
               <div className="flex justify-between items-center mb-1">
                 <div className="font-medium truncate">{user.fullName}</div>
                 <div className="text-xs text-zinc-400">

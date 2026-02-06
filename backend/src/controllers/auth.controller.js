@@ -79,30 +79,38 @@ export const logout = (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { fullName } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ message: "Profile image is required" });
+    const updateData = {};
+    if (fullName && fullName.trim()) {
+      updateData.fullName = fullName.trim();
     }
 
-    // convert file buffer to base64
-    const base64Image = `data:${
-      req.file.mimetype
-    };base64,${req.file.buffer.toString("base64")}`;
+    if (req.file) {
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString(
+        "base64",
+      )}`;
 
-    // upload to Cloudinary
-    const uploadResponse = await cloudinary.uploader.upload(base64Image);
+      const uploadResponse = await cloudinary.uploader.upload(base64Image);
+      updateData.profilePicture = uploadResponse.secure_url;
+    }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { profilePicture: uploadResponse.secure_url },
-      { new: true }
-    );
+    //  nothing to update
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "Nothing to update" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    }).select("-password");
+
     return res.status(200).json(updatedUser);
   } catch (error) {
-    console.log("Error in updateProfile controller ", error.message);
+    console.log("Error in updateProfile controller", error.message);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 export const checkAuth = (req, res) => {
   try {
     return res.status(200).json(req.user);

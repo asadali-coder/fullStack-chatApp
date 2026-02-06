@@ -1,59 +1,117 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
-import { Camera, Mail, User } from "lucide-react";
+import { Camera, Mail, User, Check, X, Pencil } from "lucide-react";
 
 const ProfilePage = () => {
-  const { authUser, isUpdatingProfile, updateProfile } = useAuthStore() as {
-    authUser: any;
-    isUpdatingProfile: any;
-    updateProfile: any;
-  };
-  const [selectedImg, setSelectedImg] = useState<any>(null);
-  const handleImageUpload = async (e: any) => {
-    const file = e.target.files[0];
+  const { authUser, isUpdatingProfile, updateProfile } = useAuthStore();
+
+  const [selectedImg, setSelectedImg] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const [fullName, setFullName] = useState("");
+
+  useEffect(() => {
+    setFullName(authUser?.fullName || "");
+  }, [authUser?.fullName]);
+
+  const memberSince = useMemo(() => {
+    if (!authUser?.createdAt) return "-";
+    return authUser.createdAt.split("T")[0];
+  }, [authUser?.createdAt]);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => {
-      setSelectedImg(reader.result);
-    };
+    reader.onload = () => setSelectedImg(reader.result);
 
     const formData = new FormData();
     formData.append("image", file);
     await updateProfile(formData);
   };
 
+  const onSave = async () => {
+    const name = fullName.trim();
+    if (!name) return;
+
+    const formData = new FormData();
+    formData.append("fullName", name);
+    await updateProfile(formData);
+
+    setIsEditing(false);
+  };
+
+  const onCancel = () => {
+    setFullName(authUser?.fullName || "");
+    setIsEditing(false);
+  };
+
   return (
-    <div className="h-full pt-20">
-      <div className="max-w-2xl mx-auto p-4 py-8">
-        <div className="bg-base-300 rounded-xl p-6 space-y-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-semibold ">Profile</h1>
-            <p className="mt-2">Your profile information</p>
+    <div className="min-h-screen bg-base-100">
+      {/* Header */}
+      <div className="relative pt-20 pb-10">
+        <div className="absolute inset-0 h-56 bg-gradient-to-r from-blue-600/30 via-indigo-500/20 to-cyan-500/20 blur-0" />
+        <div className="relative max-w-3xl mx-auto px-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-semibold">Profile</h1>
+              <p className="opacity-70 mt-1">
+                Manage your account and personal info
+              </p>
+            </div>
+
+            {!isEditing ? (
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setIsEditing(true)}
+                disabled={isUpdatingProfile}>
+                <Pencil size={16} />
+                Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={onSave}
+                  disabled={isUpdatingProfile || !fullName.trim()}>
+                  <Check size={16} />
+                  Save
+                </button>
+                <button
+                  className="btn btn-sm"
+                  onClick={onCancel}
+                  disabled={isUpdatingProfile}>
+                  <X size={16} />
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
+        </div>
+      </div>
 
-          {/* avatar upload section */}
-
-          <div className="flex flex-col items-center gap-4">
+      {/* Body */}
+      <div className="max-w-3xl mx-auto px-4 pb-10">
+        <div className="bg-base-200/60 backdrop-blur rounded-2xl border border-base-300 shadow-sm overflow-hidden">
+          {/* Top card */}
+          <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            {/* Avatar */}
             <div className="relative">
               <img
-                src={selectedImg || authUser.profilePicture || "/avatar.png"}
+                src={selectedImg || authUser?.profilePicture || "/avatar.png"}
                 alt="Profile"
-                className="size-32 rounded-full object-cover border-4 "
+                className="size-28 sm:size-32 rounded-full object-cover ring-4 ring-base-100 shadow"
               />
+
               <label
                 htmlFor="avatar-upload"
-                className={`
-                  absolute bottom-0 right-0 
-                  bg-base-content hover:scale-105
-                  p-2 rounded-full cursor-pointer 
-                  transition-all duration-200
-                  ${
-                    isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
-                  }
-                `}>
-                <Camera className="w-5 h-5 text-base-200" />
+                className={`absolute bottom-6 right-1 bg-base-content text-base-200 p-2 rounded-full cursor-pointer hover:scale-105 transition ${
+                  isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
+                }`}
+                title="Change photo">
+                <Camera className="w-5 h-5" />
                 <input
                   type="file"
                   id="avatar-upload"
@@ -64,47 +122,80 @@ const ProfilePage = () => {
                   disabled={isUpdatingProfile}
                 />
               </label>
+
+              <div className="mt-3 text-center text-xs opacity-70">
+                {isUpdatingProfile ? "Updating..." : "Tap camera to change"}
+              </div>
             </div>
-            <p className="text-sm text-zinc-400">
-              {isUpdatingProfile
-                ? "Uploading..."
-                : "Click the camera icon to update your photo"}
-            </p>
+
+            {/* Identity */}
+            <div className="flex-1 w-full">
+              <div className="flex flex-col gap-4">
+                {/* Full Name */}
+                <div>
+                  <div className="text-xs opacity-70 flex items-center gap-2 mb-1">
+                    <User className="w-4 h-4" />
+                    Full Name
+                  </div>
+
+                  {!isEditing ? (
+                    <div className="px-4 py-3 rounded-xl bg-base-100 border border-base-300">
+                      {authUser?.fullName || "-"}
+                    </div>
+                  ) : (
+                    <input
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="input input-bordered w-full rounded-xl bg-base-100"
+                      placeholder="Enter your name"
+                      autoFocus
+                    />
+                  )}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <div className="text-xs opacity-70 flex items-center gap-2 mb-1">
+                    <Mail className="w-4 h-4" />
+                    Email
+                  </div>
+                  <div className="px-4 py-3 rounded-xl bg-base-100 border border-base-300 opacity-90">
+                    {authUser?.email || "-"}
+                  </div>
+                  <div className="text-xs opacity-60 mt-1">
+                    Email can’t be changed from here.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Full Name
+          {/* Divider */}
+          <div className="h-px bg-base-300" />
+
+          {/* Account info */}
+          <div className="p-6 sm:p-8">
+            <h2 className="text-lg font-semibold mb-4">Account</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-xl bg-base-100 border border-base-300 p-4">
+                <div className="text-xs opacity-70 mb-1">Member Since</div>
+                <div className="font-medium">{memberSince}</div>
               </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
-                {authUser?.fullName}
-              </p>
+
+              <div className="rounded-xl bg-base-100 border border-base-300 p-4">
+                <div className="text-xs opacity-70 mb-1">Account Status</div>
+                <div className="inline-flex items-center gap-2">
+                  <span className="badge badge-success badge-sm">Active</span>
+                  <span className="text-sm opacity-70">All good</span>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                Email Address
-              </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
-                {authUser?.email}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-base-300 rounded-xl p-6">
-            <h2 className="text-lg font-medium  mb-4">Account Information</h2>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between py-2 border-b border-zinc-700">
-                <span>Member Since</span>
-                <span>{authUser.createdAt?.split("T")[0]}</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span>Account Status</span>
-                <span className="text-green-500">Active</span>
-              </div>
+            {/* little unique footer */}
+            <div className="mt-6 text-xs opacity-60">
+              Tip: Keep your profile photo clear so friends can recognize you
+              quickly.
             </div>
           </div>
         </div>
@@ -112,4 +203,5 @@ const ProfilePage = () => {
     </div>
   );
 };
+
 export default ProfilePage;

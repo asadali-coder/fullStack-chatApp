@@ -143,11 +143,11 @@ const MessageInput = () => {
     setReplyingTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-
   return (
-    <div className="p-4 w-full bg-base-100 border-t border-zinc-700">
+    <div className="w-full bg-base-100 border-t border-zinc-700 p-2 sm:p-4">
+      {/* Reply preview */}
       {replyingTo && (
-        <div className="mb-3 flex items-center justify-between bg-zinc-800 px-4 py-2 rounded-lg border-l-4 border-blue-500 shadow">
+        <div className="mb-2 sm:mb-3 flex items-center justify-between bg-zinc-800 px-3 sm:px-4 py-2 rounded-lg border-l-4 border-blue-500 shadow">
           <div className="flex flex-col text-sm overflow-hidden">
             <span className="text-blue-400 font-medium text-xs">
               Replying to{" "}
@@ -156,7 +156,7 @@ const MessageInput = () => {
                 : selectedUser.fullName}
             </span>
 
-            <span className="text-zinc-300 truncate max-w-[260px]">
+            <span className="text-zinc-300 truncate max-w-[240px] sm:max-w-[380px]">
               {replyingTo.text ||
                 (replyingTo.image && "📷 Photo") ||
                 (replyingTo.audio && "🎵 Audio")}
@@ -166,19 +166,19 @@ const MessageInput = () => {
           <button
             type="button"
             onClick={() => setReplyingTo(null)}
-            className="ml-3 p-1 rounded-full hover:bg-zinc-700 text-zinc-400 hover:text-white">
+            className="ml-2 sm:ml-3 p-2 sm:p-1 rounded-full hover:bg-zinc-700 text-zinc-400 hover:text-white">
             <X size={16} />
           </button>
         </div>
       )}
 
-      {/* IMAGE PREVIEW */}
+      {/* Image preview */}
       {imagePreview && (
-        <div className="mb-3 flex items-center gap-3">
-          <div className="relative">
+        <div className="mb-2 sm:mb-3">
+          <div className="relative inline-block">
             <img
               src={imagePreview}
-              className="w-24 h-24 rounded-lg object-cover border border-zinc-600 shadow"
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover border border-zinc-600 shadow"
             />
             <button
               onClick={removeImage}
@@ -190,38 +190,19 @@ const MessageInput = () => {
         </div>
       )}
 
-      {/* INPUT ROW */}
-      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        {/* INPUT BOX */}
-        <div className="flex-1 relative flex items-center gap-2">
-          <input
-            type="text"
-            ref={textInputRef}
-            className="w-full input input-bordered rounded-xl input-sm sm:input-md bg-base-200"
-            placeholder="Type a message..."
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              onInputTyping();
-            }}
-          />
-
-          {/* Emoji Button */}
+      {/* Input row */}
+      <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+        {/* Left actions */}
+        <div className="flex items-center gap-1">
+          {/* Emoji */}
           <button
             type="button"
             onClick={() => setShowEmoji(!showEmoji)}
-            className="btn btn-circle btn-ghost hidden sm:flex">
+            className="btn btn-ghost btn-circle btn-sm sm:btn-md">
             😊
           </button>
 
-          {/* Emoji Picker */}
-          {showEmoji && (
-            <div ref={emojiRef} className="absolute bottom-14 left-0 z-50">
-              <EmojiPicker onEmojiClick={handleEmojiClick} />
-            </div>
-          )}
-
-          {/* Image Button */}
+          {/* Image */}
           <input
             type="file"
             ref={fileInputRef}
@@ -229,39 +210,60 @@ const MessageInput = () => {
             onChange={handleImageChange}
             className="hidden"
           />
-
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="btn btn-circle btn-ghost hidden sm:flex">
-            <Image size={20} />
+            className="btn btn-ghost btn-circle btn-sm sm:btn-md">
+            <Image size={18} />
           </button>
         </div>
 
-        {/* RECORD BUTTON */}
+        {/* Text input */}
+        <div className="relative flex-1">
+          {/* Emoji picker */}
+          {showEmoji && (
+            <div ref={emojiRef} className="absolute bottom-14 left-0 z-50">
+              <EmojiPicker onEmojiClick={handleEmojiClick} />
+            </div>
+          )}
+
+          <input
+            type="text"
+            ref={textInputRef}
+            className="w-full input input-bordered rounded-xl bg-base-200 input-md"
+            placeholder="Type a message..."
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              onInputTyping();
+            }}
+          />
+        </div>
+
+        {/* Record */}
         <button
           type="button"
-          className={`btn btn-circle ${
+          className={`btn btn-circle btn-sm sm:btn-md ${
             isRecording ? "bg-red-500 text-white" : "bg-base-200"
           }`}
           disabled={isSendingAudio}
           onClick={isRecording ? stopRecording : startRecording}>
           {isSendingAudio ? (
-            <Loader2 className="animate-spin" size={20} />
+            <Loader2 className="animate-spin" size={18} />
           ) : (
-            <Mic size={22} />
+            <Mic size={20} />
           )}
         </button>
 
-        {/* SEND BUTTON */}
+        {/* Send */}
         <button
           type="submit"
-          className="btn btn-circle btn-primary"
+          className="btn btn-circle btn-primary btn-sm sm:btn-md"
           disabled={isSending || (!text.trim() && !imagePreview)}>
           {isSending ? (
-            <Loader2 className="animate-spin" size={20} />
+            <Loader2 className="animate-spin" size={18} />
           ) : (
-            <Send size={22} />
+            <Send size={20} />
           )}
         </button>
       </form>

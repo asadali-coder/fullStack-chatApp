@@ -9,6 +9,7 @@ const Navbar = () => {
   };
 
   const isSettings = useMatch("/settings");
+  const isProfile = useMatch("/profile");
   return (
     <header
       className=" border-b border-base-300 fixed w-full top-0 z-40 
@@ -48,12 +49,25 @@ const Navbar = () => {
 
             {authUser && (
               <>
-                <Link to={"/profile"} className={`btn btn-sm gap-2`}>
-                  <User className="size-5" />
-                  <span className="hidden sm:inline">Profile</span>
-                </Link>
+                {isProfile ? (
+                  <>
+                    <Link to={"/"} className={`btn btn-sm gap-2`}>
+                      <Home className="w-4 h-4" />
+                      <span className="hidden sm:inline">Home</span> 
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to={"/profile"} className={`btn btn-sm gap-2`}>
+                      <User className="size-5" />
+                      <span className="hidden sm:inline">Profile</span>
+                    </Link>
+                  </>
+                )}
 
-                <button className="flex gap-2 items-center cursor-pointer" onClick={logout}>
+                <button
+                  className="flex gap-2 items-center cursor-pointer"
+                  onClick={logout}>
                   <LogOut className="size-5" />
                   <span className="hidden sm:inline">Logout</span>
                 </button>

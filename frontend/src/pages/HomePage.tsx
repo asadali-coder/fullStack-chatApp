@@ -17,14 +17,14 @@ const HomePage = () => {
               <Sidebar />
             </div>
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="lg:hidden border-b border-base-300 p-3 flex items-center justify-between">
+              <div className={"lg:hidden border-b border-base-300 p-3 flex items-center justify-between"}>
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => setMobileSidebarOpen(true)}
                   type="button">
                   {/* simple icon */}
                   <span className="text-xl leading-none">☰</span>
-                </button>               
+                </button>
               </div>
               {!selectedUser ? <NoChatSelected /> : <ChatContainer />}
             </div>
@@ -47,7 +47,6 @@ const HomePage = () => {
               className={`absolute left-0 top-0 h-full w-[85%] max-w-sm bg-base-100 border-r border-base-300 transition-transform duration-200 ${
                 mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
               }`}>
-              
               <Sidebar onSelectUser={() => setMobileSidebarOpen(false)} />
             </div>
           </div>

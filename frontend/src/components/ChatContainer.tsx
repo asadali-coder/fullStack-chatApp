@@ -18,12 +18,9 @@ const ChatContainer = () => {
 
   const { authUser } = useAuthStore() as any;
   const messageEndRef = useRef(null);
-
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (messageEndRef.current && messages) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // Fetch messages and subscribe to new messages
@@ -37,7 +34,14 @@ const ChatContainer = () => {
     subscribeToMessages,
     unsubscribeFromMessages,
   ]);
+  const jumpToMessage = (id: any) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
 
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("msg-highlight");
+    setTimeout(() => el.classList.remove("msg-highlight"), 1200);
+  };
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
@@ -56,6 +60,7 @@ const ChatContainer = () => {
         {messages?.map((message: any) => (
           <div
             key={message._id}
+            id={`msg-${message._id}`}
             className={`chat ${
               message.senderId === authUser._id ? "chat-end" : "chat-start"
             }`}
@@ -79,19 +84,24 @@ const ChatContainer = () => {
               </time>
             </div>
 
-            <div className="chat-bubble flex flex-col relative">
+            <div className="chat-bubble flex flex-col relative group">
               {/* REPLY PREVIEW */}
               {message.replyTo && (
-                <div className="bg-gray-200 p-2 rounded-l-lg border-l-2 border-blue-500 mb-1">
-                  {message.replyTo.text && (
-                    <p className="text-sm">{message.replyTo.text}</p>
-                  )}
-                  {message.replyTo.audio && (
-                    <p className="text-sm italic">Audio</p>
-                  )}
-                  {message.replyTo.image && (
-                    <p className="text-sm italic">Image</p>
-                  )}
+                <div
+                  onClick={() => jumpToMessage(message.replyTo._id)}
+                  className="mb-1 px-3 py-2 rounded-md bg-zinc-800/80 border-l-4 border-blue-500 cursor-pointer hover:bg-zinc-800 transition">
+                  <p className="text-xs text-blue-400 font-medium mb-0.5">
+                    Replying to{" "}
+                    {message.replyTo.senderId === authUser._id
+                      ? "You"
+                      : selectedUser.fullName}
+                  </p>
+
+                  <p className="text-sm text-zinc-300 truncate">
+                    {message.replyTo.text ||
+                      (message.replyTo.image && "📷 Photo") ||
+                      (message.replyTo.audio && "🎵 Audio")}
+                  </p>
                 </div>
               )}
 
@@ -124,15 +134,15 @@ const ChatContainer = () => {
 
               {/* REPLY BUTTON */}
               <button
-                className="text-xs text-blue-500 mt-1 hover:underline self-start"
-                onClick={() => {
-                  useChatStore.getState().setReplyingTo(message);
-                }}>
+                className="text-xs text-blue-600 mt-1 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                onClick={() => useChatStore.getState().setReplyingTo(message)}>
                 Reply
               </button>
             </div>
           </div>
         ))}
+
+        <div ref={messageEndRef} />
       </div>
 
       <MessageInput />

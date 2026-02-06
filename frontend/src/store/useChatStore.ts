@@ -21,6 +21,8 @@ export const useChatStore = create((set, get): any => ({
         onStopTyping: null,
     },
     typingTimeoutId: null,
+    shouldFocusInput: 0,
+    requestFocusInput: () => set((s: any) => ({ shouldFocusInput: s.shouldFocusInput + 1 })),
 
     getUsers: async () => {
         set({ isUsersLoading: true });
@@ -95,7 +97,10 @@ export const useChatStore = create((set, get): any => ({
         }
     },
     setIsSending: (val: boolean) => set({ isSending: val }),
-    setReplyingTo: (message: any) => set({ replyingTo: message }),
+    setReplyingTo: (message: any) => set((s: any) => ({
+        replyingTo: message,
+        shouldFocusInput: s.shouldFocusInput + 1,
+    })),
 
     setIsSendingAudio: (val: boolean) => set({ isSendingAudio: val }),
 
@@ -241,6 +246,7 @@ export const useChatStore = create((set, get): any => ({
     setSelectedUser: (selectedUser: any) =>
         set((state: any) => ({
             selectedUser,
+            shouldFocusInput: (state.shouldFocusInput || 0) + 1,
             isTyping: false,
             users: state.users.map((u) =>
                 u._id === selectedUser?._id ? { ...u, unreadCount: 0 } : u

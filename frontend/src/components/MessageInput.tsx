@@ -10,16 +10,26 @@ const MessageInput = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-
   const emojiRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const typingTimeoutRef = useRef(null);
-  const { sendMessage, replyingTo, setReplyingTo, isSending, isSendingAudio } =
-    useChatStore();
-  const { socket } = useAuthStore(); // Get socket
-  const { selectedUser, onInputTyping } = useChatStore();
+  const { authUser } = useAuthStore() as any;
+  const textInputRef = useRef<HTMLInputElement | null>(null);
+  const {
+    sendMessage,
+    replyingTo,
+    setReplyingTo,
+    isSending,
+    isSendingAudio,
+    selectedUser,
+    onInputTyping,
+    shouldFocusInput,
+  } = useChatStore();
+  useEffect(() => {
+    setTimeout(() => textInputRef.current?.focus(), 0);
+  }, [shouldFocusInput, selectedUser?._id]);
+
   // EMOJI BOX
   useEffect(() => {
     const closeEmoji = (e: MouseEvent) => {
@@ -134,25 +144,29 @@ const MessageInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-
-
   return (
     <div className="p-4 w-full bg-base-100 border-t border-zinc-700">
-      {/* WhatsApp-style REPLY BOX */}
       {replyingTo && (
-        <div className="mb-3 p-3 bg-zinc-200 rounded-lg flex items-center justify-between border-l-4 border-blue-500 shadow-sm">
-          <div className="flex-1 text-sm text-zinc-700 truncate">
-            Replying to:{" "}
-            <span className="font-medium text-black">
+        <div className="mb-3 flex items-center justify-between bg-zinc-800 px-4 py-2 rounded-lg border-l-4 border-blue-500 shadow">
+          <div className="flex flex-col text-sm overflow-hidden">
+            <span className="text-blue-400 font-medium text-xs">
+              Replying to{" "}
+              {replyingTo.senderId === authUser._id
+                ? "You"
+                : selectedUser.fullName}
+            </span>
+
+            <span className="text-zinc-300 truncate max-w-[260px]">
               {replyingTo.text ||
-                (replyingTo.image && "Image") ||
-                (replyingTo.audio && "Audio")}
+                (replyingTo.image && "📷 Photo") ||
+                (replyingTo.audio && "🎵 Audio")}
             </span>
           </div>
+
           <button
             type="button"
             onClick={() => setReplyingTo(null)}
-            className="p-1 rounded-full hover:bg-zinc-300">
+            className="ml-3 p-1 rounded-full hover:bg-zinc-700 text-zinc-400 hover:text-white">
             <X size={16} />
           </button>
         </div>
@@ -182,6 +196,7 @@ const MessageInput = () => {
         <div className="flex-1 relative flex items-center gap-2">
           <input
             type="text"
+            ref={textInputRef}
             className="w-full input input-bordered rounded-xl input-sm sm:input-md bg-base-200"
             placeholder="Type a message..."
             value={text}
